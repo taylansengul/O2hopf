@@ -1,0 +1,38 @@
+---
+layout: default
+title: O(2)-Hopf Calculator
+---
+
+<h1>O(2)-Hopf Calculator</h1>
+
+<p>
+This web calculator accompanies my work on cubic O(2)-Hopf normal-form
+coefficients for polynomial PDE systems.
+</p>
+
+<p>
+The user enters the Fourier symbol of the linear operator and the
+multi-index representation of the polynomial nonlinearity. The app computes
+the coefficients zeta and xi, checks structural assumptions where possible,
+and classifies the result into the transition regions used in the paper.
+</p>
+
+<p>
+<strong>Note.</strong> The app is a computational companion and
+hypothesis-checking aid. Finite numerical checks over modes do not replace
+the analytic assumptions in the paper.
+</p>
+
+<p>
+<a href="https://o2hopf.streamlit.app/" target="_blank">
+Open the standalone app
+</a>
+</p>
+
+<iframe
+  src="https://o2hopf.streamlit.app/?embed=true"
+  width="100%"
+  height="950"
+  style="border:1px solid #ddd; border-radius:8px;"
+>
+</iframe>
