@@ -298,6 +298,7 @@ class O2HopfNormalForm:
 def application_1_system() -> O2HopfNormalForm:
     b_coeffs: CoeffDict = {
         (1, 0): 0.0,
+        (1, 4): lambda p: -p.get("a", 0.0),
         (1, 1): 1.0,
         (2, 1): lambda p: p["c"] ** 2,
         (2, 0): 0.0,
