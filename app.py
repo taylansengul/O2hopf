@@ -86,20 +86,23 @@ beta_sign = st.sidebar.selectbox(
 
 if preset == "Application 1 preset":
     eta = st.sidebar.number_input("eta", value=0.0, step=0.1)
+    a = st.sidebar.number_input("a", value=0.0, min_value=0.0, step=0.1,
+                                help="fourth-order coefficient b_{1,4} = -a; "
+                                     "0 <= a < c for the rigorous regime")
     c = st.sidebar.number_input("c", value=1.0, min_value=0.0001, step=0.1)
     delta = st.sidebar.number_input("delta", value=1.0, step=0.1)
     m_c = st.sidebar.number_input("critical mode m_c", value=1, step=1)
     system = application_1_system()
-    params = {"delta": float(delta), "c": float(c)}
+    params = {"a": float(a), "delta": float(delta), "c": float(c)}
     nonlinearity = application_1_nonlinearity(float(eta))
 else:
     st.sidebar.write("Use JSON inputs below.")
     m_c = st.sidebar.number_input("critical mode m_c", value=1, step=1)
     m_L = st.sidebar.number_input("maximum linear order index m_L", value=2, step=1)
-    params_text = st.text_area("Parameters JSON", '{"delta": 1.0, "c": 1.0}', height=90)
+    params_text = st.text_area("Parameters JSON", '{"a": 0.0, "delta": 1.0, "c": 1.0}', height=90)
     linear_text = st.text_area(
         "Linear coefficients JSON",
-        '{\n  "1,0": 0.0,\n  "1,1": 1.0,\n  "2,1": "c**2",\n  "2,0": 0.0,\n  "2,2": "-delta",\n  "2,4": -1.0\n}',
+        '{\n  "1,0": 0.0,\n  "1,4": "-a",\n  "1,1": 1.0,\n  "2,1": "c**2",\n  "2,0": 0.0,\n  "2,2": "-delta",\n  "2,4": -1.0\n}',
         height=170,
     )
     nonlinear_text = st.text_area(
@@ -165,3 +168,4 @@ try:
 except Exception as exc:
     st.error(str(exc))
     st.info("Check the simple-spectrum assumptions, denominators, and JSON input format.")
+
