@@ -89,8 +89,19 @@ class O2HopfNormalForm:
         tr_M = np.trace(M)
         det_M = np.linalg.det(M)
         discriminant = tr_M ** 2 - 4 * det_M
-        beta_1 = (tr_M + np.sqrt(discriminant)) / 2
-        beta_2 = (tr_M - np.sqrt(discriminant)) / 2
+        root = np.sqrt(discriminant)
+        beta_1 = (tr_M + root) / 2
+        beta_2 = (tr_M - root) / 2
+        # Pin the branch to the paper's convention.  NumPy's principal square
+        # root flips sign across the locus where the discriminant crosses the
+        # branch cut, which would conjugate (zeta, xi) at those parameters.  The
+        # draft fixes beta_1 as the eigenvalue with the larger imaginary part
+        # (= +i omega at the critical mode); enforce that ordering, breaking ties
+        # deterministically by real part so the labeling is parameter-continuous.
+        if (beta_1.imag < beta_2.imag) or (
+            abs(beta_1.imag - beta_2.imag) < self.tolerance and beta_1.real < beta_2.real
+        ):
+            beta_1, beta_2 = beta_2, beta_1
 
         if abs(M[0, 1]) > self.tolerance:
             if abs(beta_1 - M[0, 0]) < self.tolerance or abs(beta_2 - M[0, 0]) < self.tolerance:
@@ -101,22 +112,22 @@ class O2HopfNormalForm:
             q_1 = np.array([1.0, 0.0], dtype=complex)
             q_2 = np.array([0.0, 1.0], dtype=complex)
 
-        if abs(M[1, 0]) > self.tolerance:
-            beta_minus_m_1 = np.conj(beta_1)
-            beta_minus_m_2 = np.conj(beta_2)
-            if abs(beta_minus_m_1 - M[0, 0]) < self.tolerance or abs(beta_minus_m_2 - M[0, 0]) < self.tolerance:
-                raise ValueError("Adjoint eigenvector formula is near singular.")
-            q_star_1_unnorm = np.array([-M[1, 0] / (beta_minus_m_1 - M[0, 0]), 1.0], dtype=complex)
-            q_star_2_unnorm = np.array([-M[1, 0] / (beta_minus_m_2 - M[0, 0]), 1.0], dtype=complex)
-            d1 = np.dot(q_1, np.conj(q_star_1_unnorm))
-            d2 = np.dot(q_2, np.conj(q_star_2_unnorm))
-            if abs(d1) < self.tolerance or abs(d2) < self.tolerance:
-                raise ValueError("Biorthogonal normalization is near singular.")
-            q_star_1 = q_star_1_unnorm / (2 * np.pi * d1)
-            q_star_2 = q_star_2_unnorm / (2 * np.pi * d2)
-        else:
-            q_star_1 = np.array([1.0 / (2 * np.pi * q_1[0]), 0.0], dtype=complex)
-            q_star_2 = np.array([0.0, 1.0 / (2 * np.pi * q_2[1])], dtype=complex)
+        # Adjoint eigenvectors as the biorthonormal dual basis to (q_1, q_2):
+        # with Q = [q_1 | q_2], the dual covectors are the rows of Q^{-1}, so
+        # the adjoint eigenvectors q*_n satisfying the paper's normalization
+        # <q_n, q*_{n'}> = delta_{n n'}/(2 pi)  (eq. (orth2))  are
+        #   q*_n = (1/(2 pi)) * conj( row n of Q^{-1} ).
+        # This construction is convention-free: it is consistent with the
+        # forward-eigenvector convention by definition, unlike a separately
+        # parameterized left-eigenvector formula, and it reproduces the paper's
+        # sigma at every mode (including the doubled mode 2 m_c).
+        Q = np.column_stack((q_1, q_2))
+        detQ = Q[0, 0] * Q[1, 1] - Q[0, 1] * Q[1, 0]
+        if abs(detQ) < self.tolerance:
+            raise ValueError("Critical eigenvectors are (nearly) linearly dependent; M is defective.")
+        Qinv = np.array([[Q[1, 1], -Q[0, 1]], [-Q[1, 0], Q[0, 0]]], dtype=complex) / detQ
+        q_star_1 = np.conj(Qinv[0, :]) / (2 * np.pi)
+        q_star_2 = np.conj(Qinv[1, :]) / (2 * np.pi)
 
         return beta_1, beta_2, q_1, q_2, q_star_1, q_star_2
 
