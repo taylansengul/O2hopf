@@ -13,14 +13,18 @@ o2sym_tool/
     __init__.py
     core.py
     conservative.py
+    coverage.py
+    simulation.py
     formatting.py
     checks.py
     classification.py
     safe_eval.py
   examples/
     application_1.py
+    bilinear_family.py
   tests/
     test_o2sym.py
+    test_bilinear.py
 ```
 
 ## Install and run
@@ -36,6 +40,39 @@ For editable package-style installation:
 
 ```bash
 python -m pip install -e ".[dev]"
+```
+
+## Reproducing the Application
+
+The Application section studies the conservative, O(2)-equivariant bilinear family
+
+```text
+G(u, v) = [ g11 (u_x v + u v_x) ;  g21 u u_x + g22 v v_x ]
+```
+
+on the fixed Li--Yao linear operator (Hopf at m_c = 1, delta = 1 + a). On this operator the
+cubic coefficients zeta, xi are homogeneous quadratic forms in (g11, g21, g22), so their real
+parts -- which alone decide the wave-selection region -- are `g^T A g` and `g^T B g`. The
+module `o2sym.coverage` builds A, B, scans the parameter plane, and verifies that the full
+family realizes all six regions while g11 is indispensable. The module `o2sym.simulation`
+integrates the PDE directly with an integrating-factor RK4 scheme whose linear part is advanced
+by the exact closed-form 2x2 matrix exponential `expm2` (NumPy only; no SciPy).
+
+The matplotlib-backed figures require the `paper` extra:
+
+```bash
+python -m pip install -e ".[paper]"
+python -m examples.bilinear_family --outdir .
+```
+
+This prints the coverage diagnostics (conservativeness, A and B, the six reachable regions,
+the minimal-subset result) and writes `phase_diagram_a05_c1.png` and
+`selection_confirmation_a05_c1.png`. Pass `--no-figures` to skip plotting and print the
+coverage results only (NumPy alone). The direct-integration test that selects a standing wave
+in Region IV and a traveling wave in Region V runs as part of the suite:
+
+```bash
+python -m pytest tests/test_bilinear.py -q
 ```
 
 ## JSON conventions
