@@ -2,6 +2,8 @@
 
 Prototype companion calculator for cubic O(2)-Hopf normal-form coefficients in the two-component Fourier-symbol setting.
 
+A hosted version runs at <https://o2hopf.streamlit.app/> (Streamlit Community Cloud, best-effort availability); for a durable setup, install and run locally as below.
+
 This is a local research tool, not a replacement for the paper's hypotheses or proofs. Some checklist entries are sampled numerical diagnostics.
 
 ## Layout
