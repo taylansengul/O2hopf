@@ -160,7 +160,7 @@ def make_confirmation(a: float, c: float, path: str,
         vmax = np.abs(r.snapshots).max()
         ax.pcolormesh(r.x, r.snap_times - t0, r.snapshots, cmap="RdBu_r",
                       vmin=-vmax, vmax=vmax, shading="auto", rasterized=True)
-        ax.set_title(f"Region {tag}: $u(x,t)$  $\\to$ {desc}", fontsize=11)
+        ax.set_title(f"Region {tag}: $u(x,t)$  $\\to$ {data[tag].label}", fontsize=11)
         ax.set_xlabel("$x$"); ax.set_ylabel("$t$ (last 45 units)")
         ax.set_xticks([0, np.pi, 2 * np.pi]); ax.set_xticklabels(["0", "$\\pi$", "$2\\pi$"])
         ax2 = fig.add_subplot(gs[i, 1])
@@ -179,8 +179,6 @@ def make_confirmation(a: float, c: float, path: str,
     axs.set_title(f"amplitude scaling (log-log slope {slope:.2f})", fontsize=10)
     axs.legend(handles=[l_thy, l_sim], fontsize=9, loc="lower right")
     axs.set_xlim(0, 0.43); axs.set_ylim(0, None)
-    fig.suptitle(r"PDE confirmation of wave selection  "
-                 r"($a=\frac{1}{2},\,c=1$, Li--Yao operator, $g_{21}=1$)", fontsize=12)
     plt.savefig(path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     print(f"  wrote {path}  (Re zeta_V={rez_v:+.4f}, log-log amplitude slope={slope:.2f})")

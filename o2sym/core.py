@@ -56,7 +56,9 @@ def _eval_coeff(value: Coeff, params: Mapping[str, float]) -> complex:
 class O2HopfNormalForm:
     """Compute cubic O(2)-Hopf normal-form coefficients for the 2x2 symbol setup.
 
-    The implementation follows the simple-spectrum/eigenbasis formulas. It is a
+    The critical-mode data uses the simple-spectrum eigenbasis; the quadratic
+    center-manifold corrections use the matrix resolvent (2 beta_1 I - M_{2 m_c})^{-1}
+    directly, so no diagonalizability of M_{2 m_c} is required.  It is a
     companion calculator, not a replacement for the hypotheses in the paper.
     """
 
@@ -79,11 +81,11 @@ class O2HopfNormalForm:
                 M[1, 0] += _eval_coeff(self.b_coeffs[(2, 2 * k + 1)], params) * (1j * m) ** (2 * k + 1)
         return M
 
-    def eigendata(self, m: int, params: Mapping[str, float]) -> Tuple[complex, complex, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Return beta_1, beta_2, q_1, q_2, q*_1, q*_2 at mode m.
+    def eigenvalues(self, m: int, params: Mapping[str, float]) -> Tuple[complex, complex]:
+        """Return (beta_1, beta_2) at mode m, pinned to the draft's branch convention.
 
-        Uses the explicit eigenvector convention from the draft. A warning-level
-        error is raised when the simple formula is close to singular.
+        Well-defined for every M_m, including defective ones; only the
+        eigenvector construction in :meth:`eigendata` requires simple spectrum.
         """
         M = self.M_matrix(m, params)
         tr_M = np.trace(M)
@@ -102,6 +104,16 @@ class O2HopfNormalForm:
             abs(beta_1.imag - beta_2.imag) < self.tolerance and beta_1.real < beta_2.real
         ):
             beta_1, beta_2 = beta_2, beta_1
+        return beta_1, beta_2
+
+    def eigendata(self, m: int, params: Mapping[str, float]) -> Tuple[complex, complex, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Return beta_1, beta_2, q_1, q_2, q*_1, q*_2 at mode m.
+
+        Uses the explicit eigenvector convention from the draft. A warning-level
+        error is raised when the simple formula is close to singular.
+        """
+        M = self.M_matrix(m, params)
+        beta_1, beta_2 = self.eigenvalues(m, params)
 
         if abs(M[0, 1]) > self.tolerance:
             if abs(beta_1 - M[0, 0]) < self.tolerance or abs(beta_2 - M[0, 0]) < self.tolerance:
@@ -187,18 +199,21 @@ class O2HopfNormalForm:
         params: Mapping[str, float],
         q_mc: Tuple[np.ndarray, np.ndarray],
         q_star_mc: Tuple[np.ndarray, np.ndarray],
-        q_2mc: Tuple[np.ndarray, np.ndarray],
-        q_star_2mc: Tuple[np.ndarray, np.ndarray],
         beta_mc: Tuple[complex, complex],
-        beta_2mc: Tuple[complex, complex],
         nonlinearity: Nonlinearity,
     ) -> Tuple[complex, complex]:
+        """Cross-interaction coefficients via the matrix resolvent.
+
+        The quadratic center-manifold corrections are computed as
+        Phi_AA = (2 beta_1 I - M_{2 m_c})^{-1} R_AA and
+        Phi_AB = (-M_{2 m_c})^{-1} R_AB, which is well defined whenever the
+        anti-resonance and invertibility hypotheses hold, regardless of the
+        diagonalizability of M_{2 m_c}.  The eigenbasis sum of the draft is the
+        generic-case evaluation of the same resolvent.
+        """
         q_1, q_2 = q_mc
         q_star_1, _q_star_2 = q_star_mc
-        q_2mc_1, q_2mc_2 = q_2mc
-        q_star_2mc_1, q_star_2mc_2 = q_star_2mc
         beta_1, _beta_2 = beta_mc
-        beta_2mc_1, beta_2mc_2 = beta_2mc
         u_1, v_1 = q_1
         u_2, v_2 = q_2
 
@@ -224,47 +239,45 @@ class O2HopfNormalForm:
             elif alpha1.norm() == 0 and alpha2.norm() == 2:
                 C_V_2_1 += A_alpha_2
 
-        Phi_AA = np.zeros(2, dtype=complex)
-        Phi_AB = np.zeros(2, dtype=complex)
-        for k, (beta_2mc_k, q_star_2mc_k) in enumerate(((beta_2mc_1, q_star_2mc_1), (beta_2mc_2, q_star_2mc_2))):
-            sigma_sum_AA = 0.0j
-            sigma_sum_AB = 0.0j
-            for (alpha1_tuple, alpha2_tuple), a_alpha in nonlinearity.items():
-                alpha1 = MultiIndex(alpha1_tuple)
-                alpha2 = MultiIndex(alpha2_tuple)
-                if alpha1.norm() + alpha2.norm() != 2:
-                    continue
-                sigma_2mc = self.sigma_coefficient(alpha1, alpha2, m_c, q_star_2mc_k, a_alpha)
-                n1, n2 = alpha1.norm(), alpha2.norm()
-                sigma_sum_AA += sigma_2mc * u_1 ** n1 * v_1 ** n2
-                Q_AB = 0.0j
-                if n1 >= 1:
-                    Q_AB += n1 * u_1 * u_2 ** (n1 - 1) * v_2 ** n2
-                if n2 >= 1:
-                    Q_AB += n2 * u_2 ** n1 * v_1 * v_2 ** (n2 - 1)
-                sigma_sum_AB += sigma_2mc * Q_AB
-            if abs(2 * beta_1 - beta_2mc_k) < self.tolerance or abs(beta_2mc_k) < self.tolerance:
-                raise ValueError("Small denominator in center-manifold quadratic correction.")
-            Phi_AA[k] = sigma_sum_AA / (2 * beta_1 - beta_2mc_k)
-            Phi_AB[k] = sigma_sum_AB / (-beta_2mc_k)
+        R_AA = np.zeros(2, dtype=complex)
+        R_AB = np.zeros(2, dtype=complex)
+        for (alpha1_tuple, alpha2_tuple), a_alpha in nonlinearity.items():
+            alpha1 = MultiIndex(alpha1_tuple)
+            alpha2 = MultiIndex(alpha2_tuple)
+            if alpha1.norm() + alpha2.norm() != 2:
+                continue
+            phase = (1j * m_c) ** (alpha1.m_t() + alpha2.m_t())
+            vec = phase * np.asarray(a_alpha, dtype=complex)
+            n1, n2 = alpha1.norm(), alpha2.norm()
+            R_AA += vec * u_1 ** n1 * v_1 ** n2
+            Q_AB = 0.0j
+            if n1 >= 1:
+                Q_AB += n1 * u_1 * u_2 ** (n1 - 1) * v_2 ** n2
+            if n2 >= 1:
+                Q_AB += n2 * u_2 ** n1 * v_1 * v_2 ** (n2 - 1)
+            R_AB += vec * Q_AB
 
-        c_hat_11 = 0.0j
-        c_hat_12 = 0.0j
-        for k, q_2mc_k in enumerate((q_2mc_1, q_2mc_2)):
-            u_2mc_k, v_2mc_k = q_2mc_k
-            c_hat_11 += Phi_AA[k] * (
-                (C_U_1_1 * u_2mc_k + C_V_1_1 * v_2mc_k) * np.conj(u_1)
-                + (C_U_2_1 * u_2mc_k + C_V_2_1 * v_2mc_k) * np.conj(v_1)
-            )
-            c_hat_12 += Phi_AB[k] * (
-                (C_U_1_1 * u_2mc_k + C_V_1_1 * v_2mc_k) * np.conj(u_2)
-                + (C_U_2_1 * u_2mc_k + C_V_2_1 * v_2mc_k) * np.conj(v_2)
-            )
+        M_2mc = self.M_matrix(2 * m_c, params)
+        A_res = 2 * beta_1 * np.eye(2, dtype=complex) - M_2mc
+        if abs(np.linalg.det(A_res)) < self.tolerance:
+            raise ValueError("Anti-resonance fails: 2 beta_1 I - M_{2 m_c} is (nearly) singular.")
+        if abs(np.linalg.det(M_2mc)) < self.tolerance:
+            raise ValueError("Invertibility fails: M_{2 m_c} is (nearly) singular.")
+        Phi_AA = np.linalg.solve(A_res, R_AA)
+        Phi_AB = np.linalg.solve(-M_2mc, R_AB)
+
+        c_hat_11 = (
+            (C_U_1_1 * Phi_AA[0] + C_V_1_1 * Phi_AA[1]) * np.conj(u_1)
+            + (C_U_2_1 * Phi_AA[0] + C_V_2_1 * Phi_AA[1]) * np.conj(v_1)
+        )
+        c_hat_12 = (
+            (C_U_1_1 * Phi_AB[0] + C_V_1_1 * Phi_AB[1]) * np.conj(u_2)
+            + (C_U_2_1 * Phi_AB[0] + C_V_2_1 * Phi_AB[1]) * np.conj(v_2)
+        )
         return c_hat_11, c_hat_12
 
     def compute_normal_form(self, m_c: int, params: Mapping[str, float], nonlinearity: Nonlinearity) -> Tuple[complex, complex]:
         beta_1, beta_2, q_1, q_2, q_star_1, q_star_2 = self.eigendata(m_c, params)
-        beta_2mc_1, beta_2mc_2, q_2mc_1, q_2mc_2, q_star_2mc_1, q_star_2mc_2 = self.eigendata(2 * m_c, params)
         s = self.compute_s_coefficients(m_c, (q_1, q_2), (q_star_1, q_star_2), nonlinearity)
         s_hat_11, s_hat_12 = self.compute_s_hat(s, q_1, q_2)
         c_hat_11, c_hat_12 = self.compute_c_hat(
@@ -272,17 +285,14 @@ class O2HopfNormalForm:
             params,
             (q_1, q_2),
             (q_star_1, q_star_2),
-            (q_2mc_1, q_2mc_2),
-            (q_star_2mc_1, q_star_2mc_2),
             (beta_1, beta_2),
-            (beta_2mc_1, beta_2mc_2),
             nonlinearity,
         )
         return s_hat_11 + c_hat_11, s_hat_12 + c_hat_12
 
     def diagnostic_data(self, m_c: int, params: Mapping[str, float]) -> Dict[str, Any]:
         beta_1, beta_2, q_1, q_2, q_star_1, q_star_2 = self.eigendata(m_c, params)
-        beta_2mc_1, beta_2mc_2, q_2mc_1, q_2mc_2, q_star_2mc_1, q_star_2mc_2 = self.eigendata(2 * m_c, params)
+        beta_2mc_1, beta_2mc_2 = self.eigenvalues(2 * m_c, params)
         return {
             "M_mc": self.M_matrix(m_c, params),
             "M_2mc": self.M_matrix(2 * m_c, params),
@@ -290,8 +300,6 @@ class O2HopfNormalForm:
             "beta_2mc": (beta_2mc_1, beta_2mc_2),
             "q_mc": (q_1, q_2),
             "q_star_mc": (q_star_1, q_star_2),
-            "q_2mc": (q_2mc_1, q_2mc_2),
-            "q_star_2mc": (q_star_2mc_1, q_star_2mc_2),
         }
 
 
