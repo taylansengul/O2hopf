@@ -2,7 +2,9 @@
 
 Run from the repository root (with the ``paper`` extra installed for matplotlib)::
 
-    python -m examples.bilinear_family --outdir .
+    python examples/bilinear_family.py --outdir .
+
+or, equivalently, ``python -m examples.bilinear_family --outdir .``.
 
 This prints the coverage diagnostics and writes ``phase_diagram_a05_c1.png`` and
 ``selection_confirmation_a05_c1.png`` -- the two figures of the Application section.
@@ -12,9 +14,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
+from pathlib import Path
 from typing import Tuple
 
 import numpy as np
+
+# Allow direct execution via `python examples/bilinear_family.py` from the repo root.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from o2sym import (
     ConservativeChecker,
