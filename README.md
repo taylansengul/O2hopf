@@ -27,6 +27,7 @@ o2sym_tool/
   tests/
     test_o2sym.py
     test_bilinear.py
+    test_figure_coefficients.py
 ```
 
 ## Install and run
@@ -64,12 +65,15 @@ The matplotlib-backed figures require the `paper` extra:
 
 ```bash
 python -m pip install -e ".[paper]"
-python -m examples.bilinear_family --outdir .
+python examples/bilinear_family.py --outdir .
 ```
 
 This prints the coverage diagnostics (conservativeness, A and B, the six reachable regions,
 the minimal-subset result) and writes `phase_diagram_a05_c1.png` and
-`selection_confirmation_a05_c1.png`. Pass `--no-figures` to skip plotting and print the
+`selection_confirmation_a05_c1.png`. Only the latter appears in the paper, as
+Figure `fig:app1_sim`; the paper's phase diagram is drawn in pgfplots rather than
+included as an image, and `tests/test_figure_coefficients.py` checks its
+transcribed coefficients against A and B. Pass `--no-figures` to skip plotting and print the
 coverage results only (NumPy alone). The direct-integration test that selects a standing wave
 in Region IV and a traveling wave in Region V runs as part of the suite:
 
