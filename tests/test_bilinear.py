@@ -62,9 +62,22 @@ def test_elasticity_point_on_xi_zero_line():
     assert zeta.real < 0
 
 
+def test_hamiltonian_diagonal_forces_re_xi_zero():
+    """The Hamiltonian compatibility g11 = g22 forces Re xi = 0 along the diagonal."""
+    for g in (-0.4, 0.0, 0.3):
+        _, xi = normal_form_coeffs((g, 1.0, g), 0.5, 1.0)
+        assert abs(xi.real) < 1e-9
+
+
+def test_re_xi_zero_does_not_imply_hamiltonian_compatibility():
+    """The operator-specific second factor can vanish off the Hamiltonian diagonal."""
+    _, xi = normal_form_coeffs((-4.0, 1.0, 0.0), 0.5, 1.0)
+    assert abs(xi.real) < 1e-9
+
+
 def test_wave_selection_split():
-    """Direct integration selects a standing wave in Region IV and a traveling wave in Region V."""
-    r_iv = simulate_system2(0.5, 1.0, (0.40, 1.0, 0.30), delta_minus_dc=0.3, T=120.0, tail=30.0, seed=1)
-    r_v = simulate_system2(0.5, 1.0, (0.35, 1.0, -0.30), delta_minus_dc=0.3, T=120.0, tail=30.0, seed=1)
+    """Direct integration selects a Hamiltonian standing wave and a non-Hamiltonian traveling wave."""
+    r_iv = simulate_system2(0.5, 1.0, (0.0, 1.0, 0.0), delta_minus_dc=0.05, T=1000.0, tail=45.0, seed=1)
+    r_v = simulate_system2(0.5, 1.0, (0.35, 1.0, -0.30), delta_minus_dc=0.05, T=1000.0, tail=45.0, seed=1)
     assert r_iv.modulation_depth > 0.5 and r_iv.label == "standing wave"
     assert r_v.modulation_depth < 0.1 and r_v.label == "traveling wave"

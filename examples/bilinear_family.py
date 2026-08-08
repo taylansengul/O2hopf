@@ -37,7 +37,7 @@ from o2sym import (
 from o2sym.coverage import bilinear_nonlinearity
 
 A_DEFAULT, C_DEFAULT, G21 = 0.5, 1.0, 1.0
-PT_IV: Tuple[float, float, float] = (0.40, 1.0, 0.30)   # standing wave
+PT_IV: Tuple[float, float, float] = (0.0, 1.0, 0.0)     # Hamiltonian standing wave
 PT_V: Tuple[float, float, float] = (0.35, 1.0, -0.30)   # traveling wave
 _REGION_STABILITY = {
     "I": "TW saddle, SW unstable", "II": "TW unstable, SW saddle",
@@ -87,6 +87,8 @@ def make_phase_diagram(a: float, c: float, path: str, half_width: float = 0.5, n
     ax.contour(G11, G22, Z, levels=[0], colors="k", linewidths=1.6)
     ax.contour(G11, G22, Z + X, levels=[0], colors="k", linewidths=1.4, linestyles="--")
     ax.contour(G11, G22, Z - X, levels=[0], colors="k", linewidths=1.4, linestyles=":")
+    ax.plot([-half_width, half_width], [-half_width, half_width], color="0.45",
+            lw=1.4, ls="-.", label=r"Hamiltonian: $g_{11}=g_{22}$")
     ax.plot(0, 0, marker="*", ms=18, mfc="white", mec="k", mew=1.3, zorder=5)
     ax.annotate("Li--Yao\n$(g_{11},g_{22})=(0,0)$", (0, 0), textcoords="offset points",
                 xytext=(10, 8), fontsize=9, zorder=6)
@@ -109,7 +111,9 @@ def make_phase_diagram(a: float, c: float, path: str, half_width: float = 0.5, n
                    for i in range(6)]
     leg_lines = [Line2D([0], [0], color="k", lw=1.6, label=r"$\mathrm{Re}\,\zeta=0$"),
                  Line2D([0], [0], color="k", lw=1.4, ls="--", label=r"$\mathrm{Re}(\zeta+\xi)=0$"),
-                 Line2D([0], [0], color="k", lw=1.4, ls=":", label=r"$\mathrm{Re}(\zeta-\xi)=0$")]
+                 Line2D([0], [0], color="k", lw=1.4, ls=":", label=r"$\mathrm{Re}(\zeta-\xi)=0$"),
+                 Line2D([0], [0], color="0.45", lw=1.4, ls="-.",
+                        label=r"Hamiltonian: $g_{11}=g_{22}$")]
     l1 = ax.legend(handles=leg_regions, loc="upper left", bbox_to_anchor=(1.01, 1.0),
                    fontsize=8.5, title="region (stability)", title_fontsize=9, frameon=True)
     ax.add_artist(l1)
