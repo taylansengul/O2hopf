@@ -414,3 +414,42 @@ def test_quadratic_variational_example_does_not_force_c11_real_part_to_zero():
     c11_real = zeta.real  # There is no cubic part, so zeta = c_hat_{1,1}.
     assert abs(c11_real) > 1e-8
     assert xi.real == pytest.approx(0.0, abs=1e-12)
+
+
+def _li_yao_2015_coefficients(a: float, c: float) -> tuple[complex, complex]:
+    """Cubic coefficients (b_0, c_0) of Li--Yao, Physica D 310 (2015), Eqs. (4.9)--(4.11).
+
+    Specialized to the quadratic stress law sigma(u) = c^2 u + u^2 / 2 at wavenumber
+    k_0 = 1, i.e. sigma'(0) = c^2, sigma''(0) = 2, sigma'''(0) = 0, with a_c = a and
+    delta_c = a + 1.
+    """
+    k0, sp, spp, sppp, ac, dc = 1.0, c**2, 2.0, 0.0, a, a + 1.0
+    w = np.sqrt(sp * k0**2 - ac**2 * k0**8)
+    alpha = (-2 * sp * k0**2 + 2 * w**2 - 32 * k0**8 * ac * (3 - ac)) ** 2 \
+        + 144 * k0**4 * w**2 * dc**2
+    b0 = complex(
+        -6 * k0**6 * spp**2 * dc / alpha,
+        k0**4 * spp**2 * (-sp * k0**2 / w + w - 16 * k0**8 * ac * (3 - ac) / w) / alpha,
+    )
+    c0 = complex(
+        0.0,
+        -k0**2 * spp**2 / (2 * w * (sp - 16 * ac * k0**4 * (dc - 4 * k0**2)))
+        + sppp * k0**2 / (2 * w),
+    )
+    return b0, c0
+
+
+@pytest.mark.parametrize("a,c", [(0.5, 1.0), (0.2, 0.9), (0.1, 2.0), (0.3, 1.5)])
+def test_application_1_quadratic_case_matches_li_yao_2015(a, c):
+    """The eta = 0 coefficients equal those of Li--Yao up to the 4c^2 normalization.
+
+    This is the agreement asserted in the Applications section of the paper; the factor
+    4c^2 is the same one relating our coefficients to Yao's b and c.
+    """
+    system = application_1_system()
+    zeta, xi = system.compute_normal_form(
+        1, hopf_params(a, c), application_1_nonlinearity(0.0)
+    )
+    b0, c0 = _li_yao_2015_coefficients(a, c)
+    assert b0 == pytest.approx(4 * c**2 * zeta)
+    assert c0 == pytest.approx(4 * c**2 * xi)
