@@ -27,6 +27,7 @@ o2sym_tool/
   tests/
     test_o2sym.py
     test_bilinear.py
+    test_cancellation_over_operators.py
     test_figure_coefficients.py
 ```
 

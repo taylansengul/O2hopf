@@ -7,9 +7,9 @@ dependencies = ["numpy"]
 
 [project.optional-dependencies]
 app = ["streamlit"]
-test = ["pytest"]
+test = ["pytest", "sympy"]
 paper = ["matplotlib"]
-dev = ["streamlit", "pytest", "matplotlib"]
+dev = ["streamlit", "pytest", "matplotlib", "sympy"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
