@@ -9,7 +9,12 @@ purpose-built linear operators.  Two things it does not check:
     Here the linear part is sampled and its admissibility (Assumption H) is
     verified rather than assumed, over two structurally different families.
 
-2.  test_bilinear.py shows that the diagonal g11 = g22 forces Re xi = 0 and
+2.  The quadratic defect identity itself.  test_o2sym.py checks the two cubic
+    identities in absolute value and the ratio, but for the quadratic one it
+    only checks how the coefficients rescale with the multiplier, never the
+    identity's own right-hand side in the resolvent entries.
+
+3.  test_bilinear.py shows that the diagonal g11 = g22 forces Re xi = 0 and
     that one off-diagonal point also cancels.  Neither shows that the diagonal
     is the *whole* variational locus, which is what makes the off-diagonal
     branch a witness that no converse holds.  That is settled symbolically.
@@ -212,3 +217,53 @@ def test_bilinear_variational_locus_is_exactly_the_diagonal():
     c = sp.Symbol("c", positive=True)
     numerator = (g11 - g22) * (c ** 2 * (g11 - 4 * g22) + 4 * g21)
     assert sp.simplify(numerator.subs({g11: g22})) == 0
+
+
+def ksym(m, P):
+    """Real odd symbol of K: k(m) = m P(m^2)."""
+    return m * sum(c * (m ** 2) ** k for k, c in enumerate(P))
+
+
+def general_flux(g, h, P):
+    """K F, with F the general reflection-compatible derivative-free flux."""
+    g11, g21, g22 = g
+    h11, h12, h21, h22 = h
+    F1 = g11 * U[0] * V[0] + h11 * U[0] ** 2 * V[0] + h12 * V[0] ** 3
+    F2 = (sp.Rational(1, 2) * (g21 * U[0] ** 2 + g22 * V[0] ** 2)
+          + h21 * U[0] ** 3 + h22 * U[0] * V[0] ** 2)
+    return to_nonlinearity(K_apply(F1, P), K_apply(F2, P))
+
+
+@pytest.mark.parametrize("P", [[1.0], [0.0, 1.0], [2.0, -1.0], [0.0, 0.0, 1.0]])
+def test_quadratic_defect_identity_holds_in_absolute_value(P):
+    """Re c_12 equals its right-hand side, not merely its rescaling.
+
+    Re c_12 = (k(m_c) k(2 m_c) / 2) D_2
+              [ rho_22 (g22 |v_c|^2 - g21 |u_c|^2) - 2 rho_21 g11 chi ],
+    with D_2 = g22 - g11 and rho the entries of the inverse symbol at 2 m_c.
+    """
+    system = O2HopfNormalForm(LI_YAO, m_L=2)
+    rng = random.Random(2)
+    tested = 0
+    for _ in range(120):
+        params = li_yao_params(rng)
+        if not admissible(system, 1, params):
+            continue
+        g = [rng.uniform(-2, 2) for _ in range(3)]
+        h = [rng.uniform(-2, 2) for _ in range(4)]
+        nl = general_flux(g, h, P)
+
+        b1, b2, q1, q2, s1, s2 = system.eigendata(1, params)
+        _c11, c12 = system.compute_c_hat(1, params, (q1, q2), (s1, s2), (b1, b2), nl)
+
+        u_c, v_c = q1
+        chi = (u_c * np.conj(v_c)).imag
+        Minv = np.linalg.inv(system.M_matrix(2, params))
+        rho22, rho21 = Minv[1, 1].real, (Minv[1, 0] / 1j).real
+        predicted = (ksym(1, P) * ksym(2, P) / 2) * (g[2] - g[0]) * (
+            rho22 * (g[2] * abs(v_c) ** 2 - g[1] * abs(u_c) ** 2) - 2 * rho21 * g[0] * chi
+        )
+
+        tested += 1
+        assert c12.real == pytest.approx(predicted, abs=1e-9 * max(abs(c12), 1.0))
+    assert tested >= 20
