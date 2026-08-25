@@ -1,6 +1,6 @@
 [project]
 name = "o2sym-prototype"
-version = "0.3.0"
+version = "0.4.1"
 description = "Prototype O(2)-Hopf normal-form coefficient calculator"
 requires-python = ">=3.10"
 dependencies = ["numpy"]
